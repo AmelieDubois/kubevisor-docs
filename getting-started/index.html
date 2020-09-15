@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Kubevisor - Getting Started</title><link rel=icon type=image/svg href=/gfx/Favicon_Kubevisor.svg><link rel=stylesheet id=google-fonts-css href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;700&family=Roboto:wght@300;400;500;700&display=swap" type=text/css media=all><link rel=stylesheet id=main-css href=/css/style.css type=text/css media=all><script type=text/javascript src=/js/jquery-3.5.0.min.js></script><script type=text/javascript src=/js/scripts.js></script></head><body><header><div class=header><div class=hTop><div class=content><nav><div class=hSms id=hSms><span></span><span></span></div><h1><a href=/ class=hLogo><img src=/gfx/Logo_Kubevisor.png alt=Kubevisor></a></h1><ul class="hNavSec noNav" id=hNavSec><li class=hNavSNoFix><img src=/gfx/Logo_Kubernetes.svg alt=Kubernetes></li><li><a data-fancybox data-type=iframe href=/contact>Contact</a></li><li><a href=/about>About us</a></li><li class=hNavSNoFix><a href=https://github.com/link-society/kubevisor target=_blank><img src=/gfx/Logo_Github.svg alt=Github></a></li></ul></nav></div></div><div class="hMenu noNav" id=hMenu><div class=content><nav><ul class=hNav><li><a href=/getting-started>Getting Started</a></li><li><a href=/products>Products and Services</a></li><li><a href=/docs/>Documentation</a></li></ul></nav></div></div></div></header><section><div class=mainContent><div class=content><h1>Getting Started <i class=icon-mdi_extension></i></h1><div class=dispos><div class="contenu contenu-single"><h2 id=introduction>Introduction</h2><p>Kubevisor brings easy supervision to your Kubernetes cluster.
+It provides a simple way to declare how your infrastructure should be monitored
+and takes care of the rest.</p><p>The whole operator revolves around concepts:</p><ul><li>checks (performed by a <strong>probe</strong>)</li><li>notifiers</li><li>downtimes</li></ul><h2 id=resources>Resources</h2><p>Each concept is represented by a custom Kubernetes resource.</p><p>A <code>Check</code> resource defines how and when the healthcheck must be performed:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>---
+<span style=color:#66d9ef>apiVersion</span>: kubevisor.io/v1
+<span style=color:#66d9ef>kind</span>: Check
+<span style=color:#66d9ef>metadata</span>:
+  <span style=color:#66d9ef>name</span>: check-google-access
+  <span style=color:#66d9ef>labels</span>:
+    <span style=color:#66d9ef>notify-slack</span>: <span style=color:#e6db74>&#34;yes&#34;</span>
+    <span style=color:#66d9ef>active-during-weekend</span>: <span style=color:#e6db74>&#34;no&#34;</span>
+<span style=color:#66d9ef>spec</span>:
+  <span style=color:#66d9ef>image</span>:
+    <span style=color:#66d9ef>name</span>: linksociety/kubevisor-probe-curl:latest
+    <span style=color:#66d9ef>pullPolicy</span>: Always
+  <span style=color:#66d9ef>env</span>:
+    - <span style=color:#66d9ef>name</span>: HOST
+      <span style=color:#66d9ef>value</span>: https://google.com
+  <span style=color:#66d9ef>schedule</span>: every <span style=color:#ae81ff>5</span> minutes
+</code></pre></div><p>As soon as the check is created, it will be scheduled for execution and each
+execution will updates its status:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml><span style=color:#66d9ef>status</span>:
+  <span style=color:#66d9ef>last_state</span>: <span style=color:#ae81ff>0</span>
+  <span style=color:#66d9ef>last_state_seen</span>: <span style=color:#e6db74>&#34;2020-09-15T20:38:54.663Z&#34;</span>
+</code></pre></div><p>A <code>Notifier</code> resource defines what checks it applies to, and how it must be
+performed:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>---
+<span style=color:#66d9ef>apiVersion</span>: kubevisor.io/v1
+<span style=color:#66d9ef>kind</span>: Notifier
+<span style=color:#66d9ef>metadata</span>:
+  <span style=color:#66d9ef>name</span>: notify-slack
+<span style=color:#66d9ef>spec</span>:
+  <span style=color:#66d9ef>image</span>:
+    <span style=color:#66d9ef>name</span>: linksociety/kubevisor-notifier-slack:latest
+    <span style=color:#66d9ef>pullPolicy</span>: Always
+  <span style=color:#66d9ef>envFrom</span>:
+    <span style=color:#66d9ef>secretRef</span>:
+      <span style=color:#66d9ef>name</span>: my-slack-credentials
+  <span style=color:#66d9ef>selector</span>:
+    <span style=color:#66d9ef>matchLabels</span>:
+      <span style=color:#66d9ef>notify-slack</span>: <span style=color:#e6db74>&#34;yes&#34;</span>
+</code></pre></div><p>Finally, a <code>Downtime</code> resource defines a period of expected failure and will
+skip the execution of the checks it applies to during that time:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-yaml data-lang=yaml>---
+<span style=color:#66d9ef>apiVersion</span>: kubevisor.io/v1
+<span style=color:#66d9ef>kind</span>: Downtime
+<span style=color:#66d9ef>metadata</span>:
+  <span style=color:#66d9ef>name</span>: weekend-shutdown
+<span style=color:#66d9ef>spec</span>:
+  <span style=color:#66d9ef>startDate</span>: <span style=color:#e6db74>&#34;2020-09-19T00:00:00.000Z&#34;</span>
+  <span style=color:#66d9ef>duration</span>: <span style=color:#ae81ff>2</span> days
+  <span style=color:#66d9ef>schedule</span>: every week
+  <span style=color:#66d9ef>selector</span>:
+    <span style=color:#66d9ef>matchLabels</span>:
+      <span style=color:#66d9ef>active-during-weekend</span>: <span style=color:#e6db74>&#34;no&#34;</span>
+</code></pre></div><h2 id=probes-and-notifiers-as-containers>Probes and notifiers as containers</h2><p>The containers used by the <code>Check</code> and <code>Notifier</code> resources must follow some
+rules, for more information consult the <a href=/docs/container-contract/>documentation</a>.</p></div></div></div></div></section><footer><div class=footer><p>Website content is released under the terms of the
+<a href=http://creativecommons.org/licenses/by-nc-sa/4.0/>CC BY NC SA 4.0</a>
+license.</p></div></footer></body></html>
